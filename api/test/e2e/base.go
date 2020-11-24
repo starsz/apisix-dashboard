@@ -23,6 +23,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"sync"
 	"testing"
 	"time"
 
@@ -31,6 +32,11 @@ import (
 )
 
 var token string
+
+var MExpect *httpexpect.Expect
+var AExpect *httpexpect.Expect
+var MOnce sync.Once
+var AOnce sync.Once
 
 func init() {
 	//login to get auth token
@@ -84,11 +90,19 @@ func httpGet(url string) ([]byte, int, error) {
 }
 
 func MangerApiExpect(t *testing.T) *httpexpect.Expect {
-	return httpexpect.New(t, "http://127.0.0.1:8080")
+	MOnce.Do(func() {
+		MExpect = httpexpect.New(t, "http://127.0.0.1:8080")
+	})
+
+	return MExpect
 }
 
 func APISIXExpect(t *testing.T) *httpexpect.Expect {
-	return httpexpect.New(t, "http://127.0.0.1:9080")
+	AOnce.Do(func() {
+		AExpect = httpexpect.New(t, "http://127.0.0.1:9080")
+	})
+
+	return AExpect
 }
 
 func APISIXHTTPSExpect(t *testing.T) *httpexpect.Expect {
