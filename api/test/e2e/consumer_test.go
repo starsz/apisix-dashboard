@@ -131,3 +131,182 @@ func TestConsumer_with_key_auth(t *testing.T) {
 		testCaseCheck(tc)
 	}
 }
+
+func TestConsumer_Create_And_Get(t *testing.T) {
+	tests := []HttpTestCase{
+		{
+			caseDesc:     "check consumer is not exist",
+			Object:       MangerApiExpect(t),
+			Path:         "/apisix/admin/consumers/consumer_1",
+			Method:       http.MethodGet,
+			Headers:      map[string]string{"Authorization": token},
+			ExpectStatus: http.StatusNotFound,
+			ExpectBody:   "data not found",
+		},
+		{
+			caseDesc:     "check consumer is not exist",
+			Object:       MangerApiExpect(t),
+			Path:         "/apisix/admin/consumers/consumer_2",
+			Method:       http.MethodGet,
+			Headers:      map[string]string{"Authorization": token},
+			ExpectStatus: http.StatusNotFound,
+			ExpectBody:   "data not found",
+		},
+		{
+			caseDesc: "create consumer by POST",
+			Object:   MangerApiExpect(t),
+			Path:     "/apisix/admin/consumers",
+			Method:   http.MethodPost,
+			Body: `{
+				"username": "consumer_1",
+				"plugins": {
+					"limit-count": {
+					"count": 2,
+					"time_window": 60,
+					"rejected_code": 503,
+					"key": "remote_addr"
+					}
+				},
+				"desc": "test description"
+			}`,
+			Headers:      map[string]string{"Authorization": token},
+			ExpectStatus: http.StatusNotFound,
+			ExpectBody:   "404 page not found",
+		},
+		{
+			caseDesc: "create consumer by PUT",
+			Object:   MangerApiExpect(t),
+			Path:     "/apisix/admin/consumers",
+			Method:   http.MethodPut,
+			Body: `{
+				"username": "consumer_2",
+				"plugins": {
+					"limit-count": {
+					"count": 2,
+					"time_window": 60,
+					"rejected_code": 503,
+					"key": "remote_addr"
+					}
+				},
+				"desc": "test description"
+			}`,
+			Headers:      map[string]string{"Authorization": token},
+			ExpectStatus: http.StatusOK,
+			ExpectBody:   "\"code\":0",
+			Sleep:        sleepTime,
+		},
+		{
+			caseDesc:     "get consumer",
+			Object:       MangerApiExpect(t),
+			Path:         "/apisix/admin/consumers/consumer_2",
+			Method:       http.MethodGet,
+			Headers:      map[string]string{"Authorization": token},
+			ExpectStatus: http.StatusOK,
+			ExpectBody:   "\"username\":\"consumer_2\"",
+		},
+		{
+			caseDesc: "create consumer without username",
+			Object:   MangerApiExpect(t),
+			Path:     "/apisix/admin/consumers",
+			Method:   http.MethodPut,
+			Body: `{
+				"plugins": {
+					"limit-count": {
+					"count": 2,
+					"time_window": 60,
+					"rejected_code": 503,
+					"key": "remote_addr"
+					}
+				},
+				"desc": "test description"
+			}`,
+			Headers:      map[string]string{"Authorization": token},
+			ExpectStatus: http.StatusBadRequest,
+			ExpectBody:   "\"code\":10000",
+		},
+		{
+			caseDesc:     "delete consumer",
+			Object:       MangerApiExpect(t),
+			Path:         "/apisix/admin/consumers/consumer_2",
+			Method:       http.MethodDelete,
+			Headers:      map[string]string{"Authorization": token},
+			ExpectStatus: http.StatusOK,
+			ExpectBody:   "\"code\":0",
+		},
+	}
+
+	for _, tc := range tests {
+		testCaseCheck(tc)
+	}
+}
+
+func TestConsumer_Update_And_Get(t *testing.T) {
+	tests := []HttpTestCase{
+		{
+			caseDesc: "create consumer by PUT",
+			Object:   MangerApiExpect(t),
+			Path:     "/apisix/admin/consumers",
+			Method:   http.MethodPut,
+			Body: `{
+				"username": "consumer_3",
+				"plugins": {
+					"limit-count": {
+					"count": 2,
+					"time_window": 60,
+					"rejected_code": 503,
+					"key": "remote_addr"
+					}
+				},
+				"desc": "test description"
+			}`,
+			Headers:      map[string]string{"Authorization": token},
+			ExpectStatus: http.StatusOK,
+			ExpectBody:   "\"code\":0",
+			Sleep:        sleepTime,
+		},
+		{
+			caseDesc: "update consumer by PUT",
+			Object:   MangerApiExpect(t),
+			Path:     "/apisix/admin/consumers/consumer_3",
+			Method:   http.MethodPut,
+			Body: `{
+				"username": "consumer_3",
+				"plugins": {
+					"limit-count": {
+					"count": 2,
+					"time_window": 60,
+					"rejected_code": 504,
+					"key": "remote_addr"
+					}
+				},
+				"desc": "test description"
+			}`,
+			Headers:      map[string]string{"Authorization": token},
+			ExpectStatus: http.StatusOK,
+			ExpectBody:   "\"code\":0",
+			Sleep:        sleepTime,
+		},
+		{
+			caseDesc:     "get consumer",
+			Object:       MangerApiExpect(t),
+			Path:         "/apisix/admin/consumers/consumer_3",
+			Method:       http.MethodGet,
+			Headers:      map[string]string{"Authorization": token},
+			ExpectStatus: http.StatusOK,
+			ExpectBody:   "\"rejected_code\":504",
+		},
+		{
+			caseDesc:     "delete consumer",
+			Object:       MangerApiExpect(t),
+			Path:         "/apisix/admin/consumers/consumer_3",
+			Method:       http.MethodDelete,
+			Headers:      map[string]string{"Authorization": token},
+			ExpectStatus: http.StatusOK,
+			ExpectBody:   "\"code\":0",
+		},
+	}
+
+	for _, tc := range tests {
+		testCaseCheck(tc)
+	}
+}
