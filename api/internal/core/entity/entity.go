@@ -25,8 +25,8 @@ import (
 
 type BaseInfo struct {
 	ID         interface{} `json:"id"`
-	CreateTime int64       `json:"create_time"`
-	UpdateTime int64       `json:"update_time"`
+	CreateTime int64       `json:"create_time,omitempty"`
+	UpdateTime int64       `json:"update_time,omitempty"`
 }
 
 func (info *BaseInfo) GetBaseInfo() *BaseInfo {
@@ -219,4 +219,13 @@ type Service struct {
 type Script struct {
 	ID     string      `json:"id"`
 	Script interface{} `json:"script,omitempty"`
+}
+
+type ServerInfo struct {
+	BaseInfo
+	LastReportTime int    `json:"last_report_time,omitempty"`
+	UpTime         int    `json:"up_time,omitempty"`
+	EtcdVersion    string `json:"etcd_version,omitempty"`
+	Hostname       string `json:"hostname,omitempty"`
+	Version        string `json:"version,omitempty"`
 }
