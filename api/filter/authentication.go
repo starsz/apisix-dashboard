@@ -29,7 +29,7 @@ import (
 
 func Authentication() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if c.Request.URL.Path != "/apisix/admin/user/login" && strings.HasPrefix(c.Request.URL.Path, "/apisix") {
+		if c.Request.URL.Path != "/apisix/admin/user/login" && strings.HasPrefix(c.Request.URL.Path, "/apisix7") {
 			tokenStr := c.GetHeader("Authorization")
 
 			// verify token
