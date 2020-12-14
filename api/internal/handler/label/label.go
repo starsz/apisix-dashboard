@@ -23,8 +23,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/apisix/manager-api/internal/utils"
-
 	"github.com/gin-gonic/gin"
 	"github.com/shiningrush/droplet"
 	"github.com/shiningrush/droplet/wrapper"
@@ -33,6 +31,7 @@ import (
 	"github.com/apisix/manager-api/internal/core/entity"
 	"github.com/apisix/manager-api/internal/core/store"
 	"github.com/apisix/manager-api/internal/handler"
+	"github.com/apisix/manager-api/internal/utils"
 )
 
 type Handler struct {
@@ -134,7 +133,6 @@ func (h *Handler) List(c droplet.Context) (interface{}, error) {
 	reqLabels := utils.GenLabelMap(input.Label)
 
 	var items []interface{}
-
 	switch typ {
 	case "route":
 		items = append(items, h.routeStore)
@@ -232,8 +230,8 @@ func (h *Handler) List(c droplet.Context) (interface{}, error) {
 		return strings.Compare(p1.Key, p2.Key) < 0
 	})
 
-	/* Because there are more than one store item.
-	   So, we need sort after getting all of labels.
+	/* There are more than one store items,
+	   So we need sort after getting all of labels.
 	*/
 	if input.PageSize > 0 && input.PageNumber > 0 {
 		skipCount := (input.PageNumber - 1) * input.PageSize
