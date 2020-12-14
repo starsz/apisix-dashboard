@@ -154,7 +154,7 @@ func TestLabel(t *testing.T) {
 		},
 		{
 			caseDesc:     "get route label",
-			Object:       APISIXExpect(t),
+			Object:       ManagerApiExpect(t),
 			Method:       http.MethodGet,
 			Path:         "/api/labels/route",
 			ExpectStatus: http.StatusOK,
@@ -163,7 +163,7 @@ func TestLabel(t *testing.T) {
 		},
 		{
 			caseDesc:     "get ssl label",
-			Object:       APISIXExpect(t),
+			Object:       ManagerApiExpect(t),
 			Method:       http.MethodGet,
 			Path:         "/api/labels/ssl",
 			ExpectStatus: http.StatusOK,
@@ -172,7 +172,7 @@ func TestLabel(t *testing.T) {
 		},
 		{
 			caseDesc:     "get consumer label",
-			Object:       APISIXExpect(t),
+			Object:       ManagerApiExpect(t),
 			Method:       http.MethodGet,
 			Path:         "/api/labels/consumer",
 			ExpectStatus: http.StatusOK,
@@ -181,7 +181,7 @@ func TestLabel(t *testing.T) {
 		},
 		{
 			caseDesc:     "get service label",
-			Object:       APISIXExpect(t),
+			Object:       ManagerApiExpect(t),
 			Method:       http.MethodGet,
 			Path:         "/api/labels/service",
 			ExpectStatus: http.StatusOK,
@@ -190,7 +190,7 @@ func TestLabel(t *testing.T) {
 		},
 		{
 			caseDesc:     "get upstream label",
-			Object:       APISIXExpect(t),
+			Object:       ManagerApiExpect(t),
 			Method:       http.MethodGet,
 			Path:         "/api/labels/upstream",
 			ExpectStatus: http.StatusOK,
@@ -199,7 +199,7 @@ func TestLabel(t *testing.T) {
 		},
 		{
 			caseDesc:     "get all label",
-			Object:       APISIXExpect(t),
+			Object:       ManagerApiExpect(t),
 			Method:       http.MethodGet,
 			Path:         "/api/labels/all",
 			ExpectStatus: http.StatusOK,

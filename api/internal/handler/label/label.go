@@ -152,17 +152,17 @@ func (h *Handler) List(c droplet.Context) (interface{}, error) {
 	predicate := func(obj interface{}) bool {
 		var ls map[string]string
 
-		switch obj.(type) {
+		switch obj := obj.(type) {
 		case *entity.Route:
-			ls = obj.(*entity.Route).Labels
+			ls = obj.Labels
 		case *entity.Consumer:
-			ls = obj.(*entity.Consumer).Labels
+			ls = obj.Labels
 		case *entity.SSL:
-			ls = obj.(*entity.SSL).Labels
+			ls = obj.Labels
 		case *entity.Service:
-			ls = obj.(*entity.Service).Labels
+			ls = obj.Labels
 		case *entity.Upstream:
-			ls = obj.(*entity.Upstream).Labels
+			ls = obj.Labels
 		default:
 			return false
 		}

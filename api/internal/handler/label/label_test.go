@@ -30,14 +30,9 @@ import (
 )
 
 type testCase struct {
-	caseDesc  string
 	giveInput *ListInput
 	giveData  []interface{}
-	giveErr   error
-	wantErr   error
-	wantInput store.ListInput
 	wantRet   interface{}
-	called    bool
 }
 
 func genMockStore(t *testing.T, giveData []interface{}) *store.MockInterface {
