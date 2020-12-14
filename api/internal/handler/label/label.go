@@ -182,7 +182,7 @@ func (h *Handler) List(c droplet.Context) (interface{}, error) {
 	}
 
 	var totalRet = new(store.ListOutput)
-	var existMap = make(map[string]string)
+	var existMap = make(map[string]struct{})
 	for _, item := range items {
 		ret, err := item.(store.Interface).List(
 			store.ListInput{
@@ -207,11 +207,12 @@ func (h *Handler) List(c droplet.Context) (interface{}, error) {
 			}
 
 			for k, v := range r.(map[string]string) {
-				if existMap[k] == v {
+				key := fmt.Sprintf("%s:%s", k, v)
+				if _, exist := existMap[key]; exist{
 					continue
 				}
 
-				existMap[k] = v
+				existMap[key] = struct{}{}
 				p := Pair{Key: k, Val: v}
 				totalRet.Rows = append(totalRet.Rows, p)
 			}

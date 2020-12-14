@@ -32,10 +32,10 @@ func TestLabel(t *testing.T) {
 	testKey, err := ioutil.ReadFile("../certs/test2.key")
 	assert.Nil(t, err)
 	body, err := json.Marshal(map[string]interface{}{
-		"id":   "1",
+		"id":   "s1",
 		"cert": string(testCert),
 		"key":  string(testKey),
-		"label": map[string]string{
+		"labels": map[string]string{
 			"build": "16",
 			"env":   "production",
 			"extra": "ssl",
@@ -71,7 +71,7 @@ func TestLabel(t *testing.T) {
 		{
 			caseDesc: "create consumer",
 			Object:   ManagerApiExpect(t),
-			Path:     "/apisix/admin/consumers",
+			Path:     "/apisix/admin/consumers/c1",
 			Method:   http.MethodPut,
 			Body: `{
 				"username": "jack",
@@ -83,7 +83,7 @@ func TestLabel(t *testing.T) {
 				"labels": {
 					"build":"16",
 					"env":"production",
-					"version":"v2"
+					"version":"v3"
 				},
 				"desc": "test description"
 			}`,
@@ -94,7 +94,7 @@ func TestLabel(t *testing.T) {
 			caseDesc: "create upstream",
 			Object:   ManagerApiExpect(t),
 			Method:   http.MethodPut,
-			Path:     "/apisix/admin/upstreams/1",
+			Path:     "/apisix/admin/upstreams/u1",
 			Body: `{
 				"nodes": [{
 					"host": "172.16.238.20",
@@ -102,7 +102,7 @@ func TestLabel(t *testing.T) {
 					"weight": 1
 				}],
 				"labels": {
-					"build":"16",
+					"build":"17",
 					"env":"production",
 					"version":"v2"
 				},
@@ -124,9 +124,9 @@ func TestLabel(t *testing.T) {
 			caseDesc: "create service",
 			Object:   ManagerApiExpect(t),
 			Method:   http.MethodPost,
-			Path:     "/apisix/admin/service/s1",
+			Path:     "/apisix/admin/services",
 			Body: `{
-				"id": "1",
+				"id": "s1",
 				"plugins": {
 					"limit-count": {
 						"count": 2,
@@ -146,8 +146,9 @@ func TestLabel(t *testing.T) {
 				"labels": {
 					"build":"16",
 					"env":"production",
-					"version":"v2"
-				},
+					"version":"v2",
+					"extra": "test"
+				}
 			}`,
 			Headers:      map[string]string{"Authorization": token},
 			ExpectStatus: http.StatusOK,
@@ -158,17 +159,7 @@ func TestLabel(t *testing.T) {
 			Method:       http.MethodGet,
 			Path:         "/api/labels/route",
 			ExpectStatus: http.StatusOK,
-			ExpectBody:   "Missing API key found in request",
-			Sleep:        sleepTime * 2,
-		},
-		{
-			caseDesc:     "get ssl label",
-			Object:       ManagerApiExpect(t),
-			Method:       http.MethodGet,
-			Path:         "/api/labels/ssl",
-			ExpectStatus: http.StatusOK,
-			ExpectBody:   "Missing API key found in request",
-			Sleep:        sleepTime * 2,
+			ExpectBody:   "{\"build\":\"16\"},{\"env\":\"production\"},{\"version\":\"v2\"}",
 		},
 		{
 			caseDesc:     "get consumer label",
@@ -176,17 +167,7 @@ func TestLabel(t *testing.T) {
 			Method:       http.MethodGet,
 			Path:         "/api/labels/consumer",
 			ExpectStatus: http.StatusOK,
-			ExpectBody:   "Missing API key found in request",
-			Sleep:        sleepTime * 2,
-		},
-		{
-			caseDesc:     "get service label",
-			Object:       ManagerApiExpect(t),
-			Method:       http.MethodGet,
-			Path:         "/api/labels/service",
-			ExpectStatus: http.StatusOK,
-			ExpectBody:   "Missing API key found in request",
-			Sleep:        sleepTime * 2,
+			ExpectBody:   "{\"build\":\"16\"},{\"env\":\"production\"},{\"version\":\"v3\"}",
 		},
 		{
 			caseDesc:     "get upstream label",
@@ -194,8 +175,24 @@ func TestLabel(t *testing.T) {
 			Method:       http.MethodGet,
 			Path:         "/api/labels/upstream",
 			ExpectStatus: http.StatusOK,
-			ExpectBody:   "Missing API key found in request",
-			Sleep:        sleepTime * 2,
+			ExpectBody:   "{\"build\":\"17\"},{\"env\":\"production\"},{\"version\":\"v2\"}",
+		},
+		{
+			caseDesc:     "get ssl label",
+			Object:       ManagerApiExpect(t),
+			Method:       http.MethodGet,
+			Path:         "/api/labels/ssl",
+			ExpectStatus: http.StatusOK,
+			ExpectBody:   "{\"build\":\"16\"},{\"env\":\"production\"},{\"version\":\"v2\"}",
+		},
+
+		{
+			caseDesc:     "get service label",
+			Object:       ManagerApiExpect(t),
+			Method:       http.MethodGet,
+			Path:         "/api/labels/service",
+			ExpectStatus: http.StatusOK,
+			ExpectBody:   "{\"build\":\"16\"},{\"env\":\"production\"},{\"extra\":\"test\"},{\"version\":\"v2\"}",
 		},
 		{
 			caseDesc:     "get all label",
@@ -203,9 +200,66 @@ func TestLabel(t *testing.T) {
 			Method:       http.MethodGet,
 			Path:         "/api/labels/all",
 			ExpectStatus: http.StatusOK,
-			ExpectBody:   "Missing API key found in request",
-			Sleep:        sleepTime * 2,
+			ExpectBody:   "{\"build\":\"16\"},{\"build\":\"17\"},{\"env\":\"production\"},{\"extra\":\"test\"},{\"version\":\"v2\"},{\"version\":\"v3\"}",
 		},
+		{
+			caseDesc:     "get labels (key = build)",
+			Object:       ManagerApiExpect(t),
+			Method:       http.MethodGet,
+			Query:        "label=build",
+			Path:         "/api/labels/all",
+			ExpectStatus: http.StatusOK,
+			ExpectBody:   "{\"build\":\"16\"},{\"build\":\"17\"}",
+		},
+		{
+			caseDesc:     "get labels (key = build && env = production)",
+			Object:       ManagerApiExpect(t),
+			Method:       http.MethodGet,
+			Query:        "label=build,env:production",
+			Path:         "/api/labels/all",
+			ExpectStatus: http.StatusOK,
+			ExpectBody:   "{\"build\":\"16\"},{\"build\":\"17\"},{\"env\":\"production\"}",
+		},
+		{
+			caseDesc:     "delete route",
+			Object:       ManagerApiExpect(t),
+			Method:       http.MethodDelete,
+			Path:         "/apisix/admin/routes/r1",
+			Headers:      map[string]string{"Authorization": token},
+			ExpectStatus: http.StatusOK,
+		},
+		{
+			caseDesc:     "delete consumer",
+			Object:       ManagerApiExpect(t),
+			Method:       http.MethodDelete,
+			Path:         "/apisix/admin/consumers/c1",
+			Headers:      map[string]string{"Authorization": token},
+			ExpectStatus: http.StatusOK,
+		},
+		{
+			caseDesc:     "delete service",
+			Object:       ManagerApiExpect(t),
+			Method:       http.MethodDelete,
+			Path:         "/apisix/admin/services/s1",
+			Headers:      map[string]string{"Authorization": token},
+			ExpectStatus: http.StatusOK,
+		},
+		{
+			caseDesc:     "delete upstream",
+			Object:       ManagerApiExpect(t),
+			Method:       http.MethodDelete,
+			Path:         "/apisix/admin/upstreams/u1",
+			Headers:      map[string]string{"Authorization": token},
+			ExpectStatus: http.StatusOK,
+		},
+		// {
+		// 	caseDesc:     "delete SSL",
+		// 	Object:       ManagerApiExpect(t),
+		// 	Method:       http.MethodDelete,
+		// 	Path:         "/apisix/admin/ssl/s1",
+		// 	Headers:      map[string]string{"Authorization": token},
+		// 	ExpectStatus: http.StatusOK,
+		// },
 	}
 
 	for _, tc := range tests {
