@@ -17,8 +17,13 @@
 package label
 
 import (
+	"encoding/json"
+	"fmt"
 	"reflect"
+	"sort"
 	"strings"
+
+	"github.com/apisix/manager-api/internal/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/shiningrush/droplet"
@@ -38,6 +43,18 @@ type Handler struct {
 	consumerStore store.Interface
 }
 
+var _ json.Marshaler = Pair{}
+
+type Pair struct {
+	Key string
+	Val string
+}
+
+func (p Pair) MarshalJSON() ([]byte, error) {
+	res := fmt.Sprintf("{\"%s\":\"%s\"}", p.Key, p.Val)
+	return []byte(res), nil
+}
+
 func NewHandler() (handler.RouteRegister, error) {
 	return &Handler{
 		routeStore:    store.GetStore(store.HubKeyRoute),
@@ -54,44 +71,9 @@ func (h *Handler) ApplyRoute(r *gin.Engine) {
 }
 
 type ListInput struct {
-	Type   string `auto_read:"type,path" validate:"required"`
-	Labels string `auto_read:"label,query" validate:"required"`
+	Type  string `auto_read:"type,path" validate:"required"`
+	Label string `auto_read:"label,query"`
 	store.Pagination
-}
-
-func genLabelMap(label string) map[string]string {
-	mp := make(map[string]string)
-
-	if label == "" {
-		return mp
-	}
-
-	labels := strings.Split(label, ",")
-	for _, l := range labels {
-		kv := strings.Split(l, ":")
-		if len(kv) == 2 {
-			mp[kv[0]] = kv[1]
-		} else if len(kv) == 1 {
-			mp[kv[0]] = ""
-		}
-	}
-
-	return mp
-}
-
-func checkMatch(reqLabels, labels map[string]string) bool {
-	if len(reqLabels) == 0 {
-		return true
-	}
-
-	for k, v := range labels {
-		l, exist := reqLabels[k]
-		if exist && ((l == "") || v == l) {
-			return true
-		}
-	}
-
-	return false
 }
 
 func getMatch(reqLabels, labels map[string]string) map[string]string {
@@ -110,11 +92,46 @@ func getMatch(reqLabels, labels map[string]string) map[string]string {
 	return res
 }
 
+// swagger:operation GET /api/labels getLabelsList
+//
+// Return the labels list among `route,ssl,consumer,upstream,service`
+// according to the specified page number and page size, and can search labels by label.
+//
+// ---
+// produces:
+// - application/json
+// parameters:
+// - name: page
+//   in: query
+//   description: page number
+//   required: false
+//   type: integer
+// - name: page_size
+//   in: query
+//   description: page size
+//   required: false
+//   type: integer
+// - name: label
+//   in: query
+//   description: label filter of labels
+//   required: false
+//   type: string
+// responses:
+//   '0':
+//     description: list response
+//     schema:
+//       type: array
+//       items:
+//         "$ref": "#/definitions/service"
+//   default:
+//     description: unexpected error
+//     schema:
+//       "$ref": "#/definitions/ApiError"
 func (h *Handler) List(c droplet.Context) (interface{}, error) {
 	input := c.Input().(*ListInput)
 
 	typ := input.Type
-	reqLabels := genLabelMap(input.Labels)
+	reqLabels := utils.GenLabelMap(input.Label)
 
 	var items []interface{}
 
@@ -152,8 +169,7 @@ func (h *Handler) List(c droplet.Context) (interface{}, error) {
 			return false
 		}
 
-		v := checkMatch(reqLabels, ls)
-		return v
+		return utils.LabelContains(ls, reqLabels)
 	}
 
 	format := func(obj interface{}) interface{} {
@@ -167,14 +183,20 @@ func (h *Handler) List(c droplet.Context) (interface{}, error) {
 		return getMatch(reqLabels, ls)
 	}
 
-	var retSum = new(store.ListOutput)
+	var totalRet = new(store.ListOutput)
+	var existMap = make(map[string]string)
 	for _, item := range items {
 		ret, err := item.(store.Interface).List(
 			store.ListInput{
-				Predicate:  predicate,
-				Format:     format,
-				PageSize:   input.PageSize,
-				PageNumber: input.PageNumber},
+				Predicate: predicate,
+				Format:    format,
+				// Sort it later.
+				PageSize:   0,
+				PageNumber: 0,
+				Less: func(i, j interface{}) bool {
+					return true
+				},
+			},
 		)
 
 		if err != nil {
@@ -182,14 +204,52 @@ func (h *Handler) List(c droplet.Context) (interface{}, error) {
 		}
 
 		for _, r := range ret.Rows {
+			if r == nil {
+				continue
+			}
+
 			for k, v := range r.(map[string]string) {
-				new := make(map[string]string)
-				new[k] = v
-				retSum.Rows = append(retSum.Rows, new)
-				retSum.TotalSize += 1
+				if existMap[k] == v {
+					continue
+				}
+
+				existMap[k] = v
+				p := Pair{Key: k, Val: v}
+				totalRet.Rows = append(totalRet.Rows, p)
 			}
 		}
 	}
+	totalRet.TotalSize = len(totalRet.Rows)
 
-	return retSum, nil
+	sort.Slice(totalRet.Rows, func(i, j int) bool {
+		p1 := totalRet.Rows[i].(Pair)
+		p2 := totalRet.Rows[j].(Pair)
+
+		if strings.Compare(p1.Key, p2.Key) == 0 {
+			return strings.Compare(p1.Val, p2.Val) < 0
+		}
+
+		return strings.Compare(p1.Key, p2.Key) < 0
+	})
+
+	/* Because there are more than one store item.
+	   So, we need sort after getting all of labels.
+	*/
+	if input.PageSize > 0 && input.PageNumber > 0 {
+		skipCount := (input.PageNumber - 1) * input.PageSize
+		if skipCount > totalRet.TotalSize {
+			totalRet.Rows = []interface{}{}
+			return totalRet, nil
+		}
+
+		endIdx := skipCount + input.PageSize
+		if endIdx >= totalRet.TotalSize {
+			totalRet.Rows = totalRet.Rows[skipCount:]
+			return totalRet, nil
+		}
+
+		totalRet.Rows = totalRet.Rows[skipCount:endIdx]
+	}
+
+	return totalRet, nil
 }
